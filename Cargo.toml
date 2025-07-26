@@ -1,0 +1,18 @@
+[package]
+name = "webpki-roots-patcher"
+version = "0.1.0"
+edition = "2024"
+
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+bstr = "1.12.0"
+ctor = { version = "0.4.2", default-features = false, features = ["proc_macro"] }
+libc = "0.2.174"
+nix = { version = "0.30.1", features = ["uio", "process"] }
+region = "3.0.2"
+rustls-pki-types = "1.12.0"
+rustls-webpki = "0.103.4"
+webpki-roots = "1.0.2"
