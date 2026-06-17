@@ -184,7 +184,7 @@ fn patch_roots() {
     replace_root(to_replace, root_anchor);
 }
 
-#[ctor]
+#[ctor(unsafe)]
 fn init() {
     log!("== webpki-roots-patcher start ==");
     patch_roots();
