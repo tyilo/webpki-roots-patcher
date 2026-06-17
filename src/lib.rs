@@ -176,9 +176,9 @@ fn patch_roots() {
         &raw const *webpki_roots::TLS_SERVER_ROOTS
     );
 
-    eprint!("Replace ");
+    log!("Replace ");
     print_anchor(to_replace);
-    eprint!("with ");
+    log!("with ");
     print_anchor(root_anchor);
 
     replace_root(to_replace, root_anchor);
