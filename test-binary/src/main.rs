@@ -1,8 +1,12 @@
+use std::process::ExitCode;
+
 use clap::{Parser, ValueEnum};
+use rustls::RootCertStore;
 
 #[derive(Clone, Copy, ValueEnum)]
 enum TlsImplementation {
     Native,
+    RustlsPlatformProvider,
     RustlsNativeRoots,
     RustlsWebpkiRoots,
 }
@@ -18,15 +22,26 @@ async fn main() {
     let args = Args::parse();
     let builder = reqwest::Client::builder();
     let builder = match args.tls {
-        TlsImplementation::Native => builder.use_native_tls(),
-        TlsImplementation::RustlsNativeRoots => builder
-            .use_rustls_tls()
-            .tls_built_in_root_certs(false)
-            .tls_built_in_native_certs(true),
-        TlsImplementation::RustlsWebpkiRoots => builder
-            .use_rustls_tls()
-            .tls_built_in_root_certs(false)
-            .tls_built_in_webpki_certs(true),
+        TlsImplementation::Native => builder.tls_backend_native(),
+        TlsImplementation::RustlsPlatformProvider => builder.tls_backend_rustls(),
+        TlsImplementation::RustlsNativeRoots => {
+            let mut root_store = RootCertStore::empty();
+            for cert in rustls_native_certs::load_native_certs().unwrap() {
+                root_store.add(cert).unwrap();
+            }
+            let tls = rustls::ClientConfig::builder()
+                .with_root_certificates(root_store)
+                .with_no_client_auth();
+            builder.tls_backend_preconfigured(tls)
+        }
+        TlsImplementation::RustlsWebpkiRoots => {
+            let mut root_store = RootCertStore::empty();
+            root_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
+            let tls = rustls::ClientConfig::builder()
+                .with_root_certificates(root_store)
+                .with_no_client_auth();
+            builder.tls_backend_preconfigured(tls)
+        }
     };
 
     let client = builder.build().unwrap();
