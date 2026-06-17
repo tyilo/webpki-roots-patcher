@@ -18,7 +18,7 @@ struct Args {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> ExitCode {
     let args = Args::parse();
     let builder = reqwest::Client::builder();
     let builder = match args.tls {
@@ -50,5 +50,8 @@ async fn main() {
     println!("Status: {:?}", r.as_ref().map(|r| r.status()));
     if let Ok(r) = r {
         println!("Body length: {:?}", r.bytes().await.map(|b| b.len()));
+        return ExitCode::SUCCESS;
     }
+
+    ExitCode::FAILURE
 }

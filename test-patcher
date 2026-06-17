@@ -1,0 +1,59 @@
+#!/usr/bin/env python3
+import os
+from subprocess import DEVNULL, check_call, Popen, run
+from pathlib import Path
+
+check_call(["cargo", "build", "--release"])
+check_call(["cargo", "build", "--release", "--manifest-path", "test-binary/Cargo.toml"])
+
+TLS_BACKENDS = [
+    "native",
+    "rustls-platform-provider",
+    "rustls-native-roots",
+    "rustls-webpki-roots",
+]
+
+
+def run_test_binary(backend, env={}):
+    p = run(
+        ["./test-binary/target/release/test-binary", backend, "https://example.org/"],
+        env=os.environ | env,
+        stdout=DEVNULL,
+        stderr=DEVNULL,
+    )
+    return p.returncode == 0
+
+
+p = Popen(["mitmdump"], stdout=DEVNULL, stderr=DEVNULL)
+try:
+    print("Without proxy:")
+    for backend in TLS_BACKENDS:
+        res = run_test_binary(backend)
+        print(f"  {backend}: {'OK' if res else 'FAIL'}")
+
+    env = {
+        "HTTPS_PROXY": "https://localhost:8080/",
+        "SSL_CERT_FILE": Path.home() / ".mitmproxy/mitmproxy-ca-cert.pem",
+    }
+
+    print()
+    print("With proxy:")
+    for backend in TLS_BACKENDS:
+        res = run_test_binary(
+            backend,
+            env,
+        )
+        print(f"  {backend}: {'OK' if res else 'FAIL'}")
+
+    env["LD_PRELOAD"] = "target/release/libwebpki_roots_patcher.so"
+
+    print()
+    print("With proxy and patching:")
+    for backend in TLS_BACKENDS:
+        res = run_test_binary(
+            backend,
+            env,
+        )
+        print(f"  {backend}: {'OK' if res else 'FAIL'}")
+finally:
+    p.kill()
